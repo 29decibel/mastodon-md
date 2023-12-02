@@ -1,0 +1,17 @@
+{
+  "name": "mastodon-md",
+  "description": "Download your mastodon feed as markdown file",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/turndown": "^5.0.4",
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "megalodon": "^9.1.1",
+    "turndown": "^7.1.2"
+  }
+}
