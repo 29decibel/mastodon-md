@@ -50,6 +50,7 @@ function formatPost(post: Post) {
 
   return `
 ---
+id: ${post.id}
 date: ${post.created_at}
 ---
 ${post.content}${mediaContent}
