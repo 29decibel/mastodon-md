@@ -5,7 +5,8 @@ import path from "path";
 
 const turndownService = new TurndownService();
 
-const BASE_URL: string = "https://mastodon.social";
+const BASE_URL: string =
+  process.env.MASTODON_HOST_URL || "https://mastodon.social";
 const access_token: string = process.env.MASTODON_ACCESS_TOKEN || "";
 
 if (!access_token) {
