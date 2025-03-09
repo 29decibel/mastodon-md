@@ -33,9 +33,9 @@ Alternatively, you can provide these as environment variables when running the c
 To download all your public Mastodon posts to a markdown file:
 
 ```bash
-bun run src/index.ts download
+bun run download
 # or with environment variables
-MASTODON_ACCESS_TOKEN="xxxxx" MASTODON_HOST_URL="https://mastodon.social" bun run src/index.ts download
+MASTODON_ACCESS_TOKEN="xxxxx" MASTODON_HOST_URL="https://mastodon.social" bun run download
 ```
 
 This will:
@@ -68,9 +68,9 @@ Each post consists of:
 To process the queue and publish due posts:
 
 ```bash
-bun run src/index.ts post
+bun run post
 # or with environment variables
-MASTODON_ACCESS_TOKEN="xxxxx" MASTODON_HOST_URL="https://mastodon.social" bun run src/index.ts post
+MASTODON_ACCESS_TOKEN="xxxxx" MASTODON_HOST_URL="https://mastodon.social" bun run post
 ```
 
 Posts with `date: now` will be published immediately, while future-dated posts will be skipped until their scheduled date.
@@ -95,12 +95,12 @@ This would check your queue every hour and publish any due posts.
 
 2. **Run the queue processor**:
    ```bash
-   bun run src/index.ts post
+   bun run post
    ```
 
 3. **Review and download your posts**:
    ```bash
-   bun run src/index.ts download
+   bun run download
    ```
 
 ## License

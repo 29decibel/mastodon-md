@@ -3,6 +3,10 @@
   "description": "Download your mastodon feed as markdown file",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "post": "bun run src/index.ts post",
+    "download": "bun run src/index.ts download"
+  },
   "devDependencies": {
     "@types/turndown": "^5.0.4",
     "bun-types": "latest"
