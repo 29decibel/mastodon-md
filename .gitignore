@@ -176,5 +176,5 @@ dist
 
 mastodon/*.md
 
-attachments/
-mastodon-posts.md
+# attachments/
+# mastodon-posts.md
