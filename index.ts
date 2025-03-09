@@ -1,5 +1,7 @@
 import generator, { Entity } from "megalodon";
 import TurndownService from "turndown";
+import { mkdir } from "node:fs/promises";
+import path from "path";
 
 const turndownService = new TurndownService();
 
@@ -14,64 +16,173 @@ interface Post {
   id: string;
   content: string;
   created_at: string;
+  media_attachments: {
+    id: string;
+    url: string;
+    filename: string;
+    localPath: string;
+  }[];
 }
 
-function postToMarkdown(post: Post) {
+const ATTACHMENTS_DIR = "./attachments";
+
+// Ensure attachments directory exists
+async function ensureDirectoryExists() {
+  try {
+    await mkdir(ATTACHMENTS_DIR, { recursive: true });
+    console.log(`Directory '${ATTACHMENTS_DIR}' is ready`);
+  } catch (error) {
+    console.error(`Error creating directory: ${error}`);
+    throw error;
+  }
+}
+
+function formatPost(post: Post) {
+  // Add media attachments as markdown images if they exist
+  const mediaContent =
+    post.media_attachments.length > 0
+      ? "\n\n" +
+        post.media_attachments
+          .map((attachment) => `![Attachment](${attachment.localPath})`)
+          .join("\n")
+      : "";
+
   return `
 ---
 date: ${post.created_at}
 draft: false
 layout: mastodon
 ---
-${post.content}
-  `;
+${post.content}${mediaContent}
+`;
 }
 
-async function savePostToMarkdown(post: Post) {
-  const file = `./mastodon/${post.id}.md`;
-  console.log(`Saving ${file}...`);
-  await Bun.write(file, postToMarkdown(post));
-}
+async function downloadAttachment(url: string, filename: string) {
+  try {
+    console.log(`Downloading ${url}...`);
+    const response = await fetch(url);
 
-async function saveAllPostsToMarkdown(posts: Post[]) {
-  await Promise.all(posts.map(savePostToMarkdown));
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const buffer = await response.arrayBuffer();
+    const filePath = path.join(ATTACHMENTS_DIR, filename);
+
+    await Bun.write(filePath, buffer);
+    console.log(`Saved attachment to ${filePath}`);
+
+    return filePath;
+  } catch (error) {
+    console.error(`Error downloading attachment: ${error}`);
+    return null;
+  }
 }
 
 const client = generator("mastodon", BASE_URL, access_token);
 
+// All posts will be collected in this array
+const allPosts: Post[] = [];
+
 // Get your account information to retrieve your account ID
-// Fetch your account information to get your user ID
-const account = await client.verifyAccountCredentials();
+const fetchAllPosts = async () => {
+  try {
+    // Ensure attachments directory exists
+    await ensureDirectoryExists();
 
-const myUserId = account.data.id;
+    // Fetch your account information to get your user ID
+    const account = await client.verifyAccountCredentials();
+    const myUserId = account.data.id;
 
-const fetchPosts = async (maxId: string | null = null) => {
+    await fetchPostsRecursively(myUserId);
+
+    // After all posts are collected, save them to a single file
+    await saveAllPostsToSingleFile();
+  } catch (error) {
+    console.error("Error:", error);
+  }
+};
+
+const fetchPostsRecursively = async (
+  userId: string,
+  maxId: string | null = null,
+) => {
   console.log("Fetching posts...");
-  let params = {};
+  let params: any = { limit: 40 };
   if (maxId) {
-    params = { max_id: maxId, limit: 40 };
+    params.max_id = maxId;
   }
 
-  const posts = await client.getAccountStatuses(myUserId, params);
-  const postsData = posts.data
-    .filter(
-      (post: Entity.Status) => post.visibility === "public" && post.content
-    )
-    .map((post: Entity.Status): Post => {
-      return {
-        id: post.id,
-        content: turndownService.turndown(post.content),
-        created_at: post.created_at,
-      };
-    });
+  const posts = await client.getAccountStatuses(userId, params);
 
-  await saveAllPostsToMarkdown(postsData);
+  // Process and download attachments for each post
+  const processedPosts = await Promise.all(
+    posts.data
+      .filter(
+        (post: Entity.Status) => post.visibility === "public" && post.content,
+      )
+      .map(async (post: Entity.Status): Promise<Post> => {
+        // Process media attachments
+        const media_attachments = await Promise.all(
+          post.media_attachments.map(async (attachment) => {
+            const fileExtension = attachment.url.split(".").pop() || "jpg";
+            const filename = `${post.id}_${attachment.id}.${fileExtension}`;
+            const localPath = await downloadAttachment(
+              attachment.url,
+              filename,
+            );
+
+            return {
+              id: attachment.id,
+              url: attachment.url,
+              filename,
+              localPath: localPath ? path.relative(".", localPath) : "",
+            };
+          }),
+        );
+
+        return {
+          id: post.id,
+          content: turndownService.turndown(post.content),
+          created_at: post.created_at,
+          media_attachments,
+        };
+      }),
+  );
+
+  // Add to the collection
+  allPosts.push(...processedPosts);
+  console.log(
+    `Collected ${processedPosts.length} posts. Total: ${allPosts.length}`,
+  );
 
   if (posts.data.length > 0) {
     // Fetch next page
     const nextMaxId = posts.data[posts.data.length - 1].id;
-    await fetchPosts(nextMaxId);
+    await fetchPostsRecursively(userId, nextMaxId);
+  } else {
+    console.log("No more posts to fetch.");
   }
 };
 
-fetchPosts();
+const saveAllPostsToSingleFile = async () => {
+  // Sort posts by date (newest first)
+  allPosts.sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+
+  // Create the content with separators
+  const content = allPosts.map(formatPost).join("\n\n-------\n\n");
+
+  // Save to a single file
+  const filePath = "./mastodon-posts.md";
+  console.log(`Saving all ${allPosts.length} posts to ${filePath}...`);
+  await Bun.write(filePath, content);
+  console.log("Done!");
+};
+
+// Start the process
+fetchAllPosts();
