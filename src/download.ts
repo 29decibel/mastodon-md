@@ -1,42 +1,14 @@
+import { ensureDirectoryExists } from "./utils";
+import path from "path";
 import generator, { Entity } from "megalodon";
 import TurndownService from "turndown";
-import { mkdir } from "fs/promises";
-import path from "path";
+import { Post } from "./types";
+import { ATTACHMENTS_DIR, client } from "./constants";
 
 const turndownService = new TurndownService();
 
-const BASE_URL: string =
-  process.env.MASTODON_HOST_URL || "https://mastodon.social";
-const access_token: string = process.env.MASTODON_ACCESS_TOKEN || "";
-
-if (!access_token) {
-  throw new Error("MASTODON_ACCESS_TOKEN is not set");
-}
-
-interface Post {
-  id: string;
-  content: string;
-  created_at: string;
-  media_attachments: {
-    id: string;
-    url: string;
-    filename: string;
-    localPath: string;
-  }[];
-}
-
-const ATTACHMENTS_DIR = "./attachments";
-
-// Ensure attachments directory exists
-async function ensureDirectoryExists() {
-  try {
-    await mkdir(ATTACHMENTS_DIR, { recursive: true });
-    console.log(`Directory '${ATTACHMENTS_DIR}' is ready`);
-  } catch (error) {
-    console.error(`Error creating directory: ${error}`);
-    throw error;
-  }
-}
+// All posts will be collected in this array
+const allPosts: Post[] = [];
 
 function formatPost(post: Post) {
   // Add media attachments as markdown images if they exist
@@ -81,16 +53,11 @@ async function downloadAttachment(url: string, filename: string) {
   }
 }
 
-const client = generator("mastodon", BASE_URL, access_token);
-
-// All posts will be collected in this array
-const allPosts: Post[] = [];
-
 // Get your account information to retrieve your account ID
-const fetchAllPosts = async () => {
+export const fetchAllPosts = async () => {
   try {
     // Ensure attachments directory exists
-    await ensureDirectoryExists();
+    await ensureDirectoryExists(ATTACHMENTS_DIR);
 
     // Fetch your account information to get your user ID
     const account = await client.verifyAccountCredentials();
@@ -183,6 +150,3 @@ const saveAllPostsToSingleFile = async () => {
   await Bun.write(filePath, content);
   console.log("Done!");
 };
-
-// Start the process
-fetchAllPosts();
