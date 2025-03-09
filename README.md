@@ -103,6 +103,11 @@ This would check your queue every hour and publish any due posts.
    bun run download
    ```
 
+## To Do
+
+- [ ] Post with attachments
+- [ ] Example Github actions workflow
+
 ## License
 
 MIT
