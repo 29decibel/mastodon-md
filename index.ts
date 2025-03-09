@@ -1,6 +1,6 @@
 import generator, { Entity } from "megalodon";
 import TurndownService from "turndown";
-import { mkdir } from "node:fs/promises";
+import { mkdir } from "fs/promises";
 import path from "path";
 
 const turndownService = new TurndownService();
@@ -51,8 +51,6 @@ function formatPost(post: Post) {
   return `
 ---
 date: ${post.created_at}
-draft: false
-layout: mastodon
 ---
 ${post.content}${mediaContent}
 `;
@@ -176,7 +174,7 @@ const saveAllPostsToSingleFile = async () => {
   );
 
   // Create the content with separators
-  const content = allPosts.map(formatPost).join("\n\n-------\n\n");
+  const content = allPosts.map(formatPost).join("\n\n");
 
   // Save to a single file
   const filePath = "./mastodon-posts.md";
