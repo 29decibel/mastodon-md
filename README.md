@@ -82,7 +82,7 @@ Posts with `date: now` will be published immediately, while future-dated posts w
 You can set up a cron job to periodically process your queue:
 
 ```
-0 * * * * cd /path/to/mastodon-md && bun run src/index.ts post
+0 * * * * cd /path/to/mastodon-md && bun run post
 ```
 
 This would check your queue every hour and publish any due posts.
